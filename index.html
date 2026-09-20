@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Waste Segregation Assistant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f6f3;
+      --surface: #ffffff;
+      --border: #d8ddd4;
+      --text: #1e2820;
+      --muted: #5a6b5c;
+      --accent: #2e7d32;
+      --accent-light: #e8f5e9;
+      --danger: #b71c1c;
+      --danger-light: #ffebee;
+      --warn: #e65100;
+      --warn-light: #fff3e0;
+      --info: #1565c0;
+      --info-light: #e3f2fd;
+      --purple: #6a1b9a;
+      --purple-light: #f3e5f5;
+      --gray-light: #f0f2ef;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      padding: 18px 24px 14px;
+      text-align: center;
+    }
+    header h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: 0.3px; }
+    header p  { font-size: 0.8rem; opacity: 0.85; margin-top: 4px; }
+    .sdg-badge {
+      display: inline-block;
+      margin-top: 8px;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.35);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Main layout ── */
+    main {
+      width: 100%;
+      max-width: 760px;
+      padding: 20px 16px 40px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ── Category legend ── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+    .legend-title {
+      width: 100%;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 2px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.73rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1.5px solid transparent;
+    }
+    .chip-bio      { background: var(--accent-light);  color: var(--accent);  border-color: #a5d6a7; }
+    .chip-recycle  { background: var(--info-light);    color: var(--info);    border-color: #90caf9; }
+    .chip-nonrecyc { background: var(--gray-light);    color: #455a64;        border-color: #b0bec5; }
+    .chip-hazard   { background: var(--danger-light);  color: var(--danger);  border-color: #ef9a9a; }
+    .chip-ewaste   { background: var(--purple-light);  color: var(--purple);  border-color: #ce93d8; }
+
+    /* ── Chat window ── */
+    .chat-window {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      min-height: 360px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+
+    /* ── Messages ── */
+    .msg { display: flex; gap: 10px; max-width: 100%; }
+    .msg.user { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      align-self: flex-end;
+    }
+    .avatar-ai   { background: var(--accent); color: #fff; }
+    .avatar-user { background: #cfd8dc; color: #37474f; }
+
+    .bubble {
+      max-width: 82%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+    .msg.user .bubble {
+      background: var(--accent);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.ai .bubble {
+      background: var(--gray-light);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+
+    /* ── Result card inside AI bubble ── */
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin-top: 6px;
+      font-size: 0.84rem;
+    }
+    .result-header {
+      padding: 8px 12px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .result-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+    .result-row  { display: flex; gap: 6px; align-items: flex-start; }
+    .result-label {
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 72px;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding-top: 1px;
+    }
+    .result-value { flex: 1; color: var(--text); }
+    .conf-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .conf-high   { background: #c8e6c9; color: #1b5e20; }
+    .conf-medium { background: #fff9c4; color: #f57f17; }
+    .conf-low    { background: #ffccbc; color: #bf360c; }
+
+    /* category header colours */
+    .hdr-bio      { background: var(--accent-light);  color: var(--accent); }
+    .hdr-recycle  { background: var(--info-light);    color: var(--info); }
+    .hdr-nonrecyc { background: var(--gray-light);    color: #455a64; }
+    .hdr-hazard   { background: var(--danger-light);  color: var(--danger); }
+    .hdr-ewaste   { background: var(--purple-light);  color: var(--purple); }
+
+    /* ── Typing indicator ── */
+    .typing { display: flex; align-items: center; gap: 4px; padding: 6px 2px; }
+    .typing span {
+      width: 7px; height: 7px;
+      background: var(--muted);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+      30%            { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* ── Sample inputs ── */
+    .samples {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+    .samples-title {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+    }
+    .sample-btns { display: flex; flex-wrap: wrap; gap: 7px; }
+    .sample-btn {
+      background: var(--gray-light);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 13px;
+      font-size: 0.8rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .sample-btn:hover { background: var(--accent-light); border-color: #a5d6a7; color: var(--accent); }
+
+    /* ── Input area ── */
+    .input-area {
+      display: flex;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      align-items: flex-end;
+    }
+    #userInput {
+      flex: 1;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: inherit;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: transparent;
+      max-height: 100px;
+      min-height: 36px;
+    }
+    #userInput::placeholder { color: #9e9e9e; }
+    #sendBtn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    #sendBtn:hover   { background: #1b5e20; }
+    #sendBtn:disabled { background: #a5d6a7; cursor: default; }
+
+    /* ── Disclaimer ── */
+    .disclaimer {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: center;
+      padding: 0 8px;
+      line-height: 1.5;
+    }
+
+    /* ── Responsible AI note ── */
+    .rai-note {
+      background: #fffde7;
+      border: 1px solid #ffe082;
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      color: #5d4037;
+      line-height: 1.5;
+    }
+    .rai-note strong { color: #e65100; }
+
+    /* ── How it works ── */
+    .how-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .how-title {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 12px;
+    }
+    .how-steps {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .how-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      flex: 1;
+      min-width: 90px;
+    }
+    .how-step-icon {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      border: 2px solid #a5d6a7;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .how-step-label {
+      font-size: 0.72rem;
+      color: var(--text);
+      font-weight: 600;
+      margin-top: 6px;
+      line-height: 1.3;
+    }
+    .how-step-sub {
+      font-size: 0.67rem;
+      color: var(--muted);
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .how-arrow {
+      font-size: 0.9rem;
+      color: #a5d6a7;
+      flex-shrink: 0;
+      padding-top: 9px;
+      align-self: flex-start;
+    }
+
+    /* ── Image upload ── */
+    .img-upload-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+      background: var(--gray-light);
+      border-radius: 0 0 var(--radius) var(--radius);
+      flex-wrap: wrap;
+    }
+    .img-upload-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent);
+      cursor: pointer;
+      border: 1px solid #a5d6a7;
+      border-radius: var(--radius-sm);
+      padding: 5px 11px;
+      background: var(--surface);
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .img-upload-label:hover { background: var(--accent-light); }
+    #imgInput { display: none; }
+    .img-upload-note {
+      font-size: 0.72rem;
+      color: var(--muted);
+      flex: 1;
+      line-height: 1.4;
+    }
+    .img-preview-wrap {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .img-preview-wrap.visible { display: flex; }
+    #imgPreview {
+      width: 56px; height: 56px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .img-preview-info { font-size: 0.78rem; color: var(--muted); flex: 1; line-height: 1.4; }
+    .img-clear-btn {
+      font-size: 0.75rem;
+      color: var(--danger);
+      border: none;
+      background: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .img-clear-btn:hover { background: var(--danger-light); }
+
+    /* ── Uncertainty warning banner ── */
+    .uncertainty-banner {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.76rem;
+      color: #6d4c00;
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    /* ── Responsible AI panel ── */
+    .rai-panel {
+      background: #fffde7;
+      border: 1px solid #ffe082;
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .rai-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .rai-panel-header-left {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #5d4037;
+    }
+    .rai-toggle {
+      font-size: 0.7rem;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 4px;
+      padding: 2px 8px;
+      cursor: pointer;
+    }
+    .rai-panel-body {
+      display: none;
+      padding: 0 14px 12px;
+    }
+    .rai-panel-body.open { display: block; }
+    .rai-section {
+      margin-top: 10px;
+    }
+    .rai-section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #e65100;
+      margin-bottom: 4px;
+    }
+    .rai-section p {
+      font-size: 0.78rem;
+      color: #5d4037;
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    /* ── Local disposal disclaimer ── */
+    .local-disclaimer {
+      background: var(--surface);
+      border: 1px solid #b0bec5;
+      border-left: 4px solid var(--info);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      color: #1a3a5c;
+      line-height: 1.55;
+    }
+    .local-disclaimer strong { color: var(--info); }
+
+    /* ── Image result note ── */
+    .img-result-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      background: #fff3e0;
+      border: 1px solid #ffcc80;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.76rem;
+      color: #6d3c00;
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    footer {
+      width: 100%;
+      text-align: center;
+      padding: 14px 16px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>♻️ AI Waste Segregation Assistant</h1>
+  <p>Helping you make responsible waste decisions, one item at a time.</p>
+  <span class="sdg-badge">UN SDG 12 · Responsible Consumption &amp; Production</span>
+</header>
+
+<main>
+
+  <!-- How it works -->
+  <div class="how-section">
+    <div class="how-title">How it works</div>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="how-step-icon">📝</div>
+        <div class="how-step-label">User Input</div>
+        <div class="how-step-sub">Text or image description</div>
+      </div>
+      <div class="how-arrow">›</div>
+      <div class="how-step">
+        <div class="how-step-icon">🔍</div>
+        <div class="how-step-label">AI Identification</div>
+        <div class="how-step-sub">Item recognised from input</div>
+      </div>
+      <div class="how-arrow">›</div>
+      <div class="how-step">
+        <div class="how-step-icon">♻️</div>
+        <div class="how-step-label">Waste Classification</div>
+        <div class="how-step-sub">Category assigned with confidence</div>
+      </div>
+      <div class="how-arrow">›</div>
+      <div class="how-step">
+        <div class="how-step-icon">🗑️</div>
+        <div class="how-step-label">Disposal Guidance</div>
+        <div class="how-step-sub">Step-by-step disposal method</div>
+      </div>
+      <div class="how-arrow">›</div>
+      <div class="how-step">
+        <div class="how-step-icon">💡</div>
+        <div class="how-step-label">Sustainability Tip</div>
+        <div class="how-step-sub">One actionable reduction tip</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category legend -->
+  <div class="legend">
+    <div class="legend-title">Waste Categories</div>
+    <span class="chip chip-bio">🟢 Biodegradable</span>
+    <span class="chip chip-recycle">🔵 Recyclable</span>
+    <span class="chip chip-nonrecyc">⚫ Non-recyclable</span>
+    <span class="chip chip-hazard">🔴 Hazardous</span>
+    <span class="chip chip-ewaste">🟣 E-waste</span>
+  </div>
+
+  <!-- Responsible AI / Privacy panel -->
+  <div class="rai-panel">
+    <div class="rai-panel-header" onclick="toggleRai()">
+      <div class="rai-panel-header-left">⚠️ Responsible AI &amp; Privacy Notice</div>
+      <button class="rai-toggle" id="raiToggleBtn">Show details</button>
+    </div>
+    <div class="rai-panel-body" id="raiBody">
+      <div class="rai-section">
+        <div class="rai-section-title">Transparency &amp; Uncertainty</div>
+        <p>Every response includes a confidence level (High / Medium / Low). When the assistant cannot confidently identify an item, it will ask for more information rather than guess. Confidence is determined by how closely your input matches the knowledge base — it is not a guarantee.</p>
+      </div>
+      <div class="rai-section">
+        <div class="rai-section-title">Image Input Limitation</div>
+        <p>This prototype cannot analyse the visual content of an image. When you upload a photo, the assistant uses only the filename as a text hint. Classification accuracy is therefore limited — results will be capped at Medium confidence and clearly labelled as image-based estimates.</p>
+      </div>
+      <div class="rai-section">
+        <div class="rai-section-title">Privacy &amp; Data Handling</div>
+        <p>No text input, image, or personal information is sent to any server. All processing happens locally in your browser. Images are loaded for preview only and are not stored, transmitted, or retained after you close or refresh the page.</p>
+      </div>
+      <div class="rai-section">
+        <div class="rai-section-title">No Unsupported Claims</div>
+        <p>Sustainability tips in this prototype are based on general, widely-accepted waste management principles. Specific statistics are not cited unless they are well-established and sourced. When in doubt, the assistant will use qualitative language rather than unverified figures.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat window -->
+  <div class="chat-window" id="chatWindow">
+    <!-- Welcome message injected by JS -->
+  </div>
+
+  <!-- Sample inputs -->
+  <div class="samples">
+    <div class="samples-title">Try a sample input</div>
+    <div class="sample-btns">
+      <button class="sample-btn" onclick="sendSample('Used plastic water bottle')">Used plastic water bottle</button>
+      <button class="sample-btn" onclick="sendSample('Banana peel')">Banana peel</button>
+      <button class="sample-btn" onclick="sendSample('Used battery')">Used battery</button>
+      <button class="sample-btn" onclick="sendSample('Food container with leftover food')">Food container with leftover food</button>
+      <button class="sample-btn" onclick="sendSample('Old smartphone')">Old smartphone</button>
+      <button class="sample-btn" onclick="sendSample('Newspaper')">Newspaper</button>
+      <button class="sample-btn" onclick="sendSample('Broken glass')">Broken glass</button>
+      <button class="sample-btn" onclick="sendSample('Expired medicine')">Expired medicine</button>
+    </div>
+  </div>
+
+  <!-- Input area -->
+  <div class="input-area" style="flex-direction:column;padding:0;gap:0;overflow:hidden;">
+    <div style="display:flex;gap:8px;padding:10px 12px;align-items:flex-end;">
+      <textarea id="userInput" rows="1" placeholder="Describe a waste item (e.g. 'old paint can', 'apple core')…" oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+      <button id="sendBtn" onclick="handleSend()">Send</button>
+    </div>
+    <!-- Image upload strip -->
+    <div class="img-upload-area">
+      <label class="img-upload-label" for="imgInput">📷 Attach image</label>
+      <input type="file" id="imgInput" accept="image/*" onchange="handleImageUpload(event)" />
+      <span class="img-upload-note">Optional — filename used as a text hint only. Visual content is not analysed. Result capped at Medium confidence.</span>
+      <div class="img-preview-wrap" id="imgPreviewWrap">
+        <img id="imgPreview" src="" alt="Preview" />
+        <div class="img-preview-info" id="imgPreviewInfo"></div>
+        <button class="img-clear-btn" onclick="clearImage()">✕ Remove</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Local disposal disclaimer -->
+  <div class="local-disclaimer">
+    <strong>Local Guidelines Apply:</strong> Waste disposal rules vary by city, municipality, and country. The guidance above is general. Always check your local authority's official waste segregation rules before disposal — especially for hazardous and e-waste items.
+  </div>
+
+</main>
+
+<footer>
+  AI Waste Segregation Assistant · Aligned with UN SDG 12 · Educational Prototype
+</footer>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// KNOWLEDGE BASE
+// Each entry: keywords[], category, disposal, tip, confidence, icon, hdrClass
+// ─────────────────────────────────────────────────────────────────────────────
+const KB = [
+  // ── BIODEGRADABLE ──
+  {
+    keywords: ['banana','banana peel','fruit peel','orange peel','mango peel','apple core','fruit'],
+    item: 'Fruit peel / food scrap',
+    category: 'Biodegradable',
+    disposal: 'Place in a green/wet waste bin. Can be home-composted or sent to municipal composting facilities.',
+    tip: 'Start a small compost bin at home — fruit scraps become nutrient-rich fertiliser in 6–8 weeks.',
+    confidence: 'High',
+    icon: '🟢', hdrClass: 'hdr-bio'
+  },
+  {
+    keywords: ['vegetable','veggie','food scrap','leftover','cooked food','rice','bread','egg shell','eggshell','tea bag','coffee ground','coffee grounds'],
+    item: 'Food waste / organic kitchen scrap',
+    category: 'Biodegradable',
+    disposal: 'Dispose in a wet/green waste bin. Avoid mixing with dry recyclables. Composting is preferred.',
+    tip: 'Reducing food waste is one of the highest-impact climate actions an individual can take.',
+    confidence: 'High',
+    icon: '🟢', hdrClass: 'hdr-bio'
+  },
+  {
+    keywords: ['grass', 'garden waste', 'leaves', 'leaf', 'plant', 'flower', 'twig', 'branch'],
+    item: 'Garden / green waste',
+    category: 'Biodegradable',
+    disposal: 'Place in a garden/green bin or take to a composting centre. Avoid burning.',
+    tip: 'Composted garden waste returns carbon and nutrients to the soil, reducing need for chemical fertilisers.',
+    confidence: 'High',
+    icon: '🟢', hdrClass: 'hdr-bio'
+  },
+
+  // ── RECYCLABLE ──
+  {
+    keywords: ['plastic bottle', 'water bottle', 'plastic water bottle', 'soda bottle', 'pet bottle'],
+    item: 'Plastic water/soda bottle (PET)',
+    category: 'Recyclable',
+    disposal: 'Rinse clean, crush to save space, and place in a blue/dry recycling bin. Remove cap if required by your local facility.',
+    tip: 'Switching to a reusable bottle significantly reduces single-use plastic waste over time.',
+    confidence: 'High',
+    icon: '🔵', hdrClass: 'hdr-recycle'
+  },
+  {
+    keywords: ['newspaper', 'paper', 'cardboard', 'magazine', 'office paper', 'carton', 'paper bag'],
+    item: 'Paper / cardboard',
+    category: 'Recyclable',
+    disposal: 'Flatten and place in a dry recycling bin. Keep dry — wet or greasy paper (like used pizza boxes) cannot be recycled.',
+    tip: 'Recycling paper conserves trees and water compared to producing paper from virgin materials.',
+    confidence: 'High',
+    icon: '🔵', hdrClass: 'hdr-recycle'
+  },
+  {
+    keywords: ['glass bottle', 'glass jar', 'glass container', 'wine bottle', 'beer bottle'],
+    item: 'Glass bottle / jar',
+    category: 'Recyclable',
+    disposal: 'Rinse and place in a glass recycling bin or drop-off point. Do not mix with broken glass.',
+    tip: 'Glass is 100% recyclable and can be recycled endlessly without loss of quality.',
+    confidence: 'High',
+    icon: '🔵', hdrClass: 'hdr-recycle'
+  },
+  {
+    keywords: ['aluminium can', 'aluminum can', 'tin can', 'metal can', 'soda can', 'beverage can'],
+    item: 'Metal / aluminium can',
+    category: 'Recyclable',
+    disposal: 'Rinse and crush (optional) before placing in the metal/dry recycling bin.',
+    tip: 'Aluminium is highly recyclable and recycling it uses significantly less energy than producing new aluminium.',
+    confidence: 'High',
+    icon: '🔵', hdrClass: 'hdr-recycle'
+  },
+
+  // ── FOOD CONTAINER (ambiguous — needs check) ──
+  {
+    keywords: ['food container with leftover', 'container with food', 'dirty container', 'takeaway container with food'],
+    item: 'Food container with leftover food',
+    category: 'Non-recyclable',
+    disposal: 'Scrape leftover food into a wet waste/compost bin first. If the container is clean plastic or cardboard after scraping, it may be recyclable — check the resin code (bottom of container).',
+    tip: 'A contaminated container cannot be recycled. Rinse before recycling to keep the stream clean.',
+    confidence: 'Medium',
+    icon: '⚫', hdrClass: 'hdr-nonrecyc'
+  },
+
+  // ── NON-RECYCLABLE ──
+  {
+    keywords: ['broken glass', 'shattered glass', 'glass shard', 'mirror'],
+    item: 'Broken glass',
+    category: 'Non-recyclable',
+    disposal: 'Wrap carefully in thick newspaper or bubble wrap, tape securely, and dispose in general waste. Never place in recycling — it injures workers.',
+    tip: 'Store broken glass safely to prevent injuries during collection.',
+    confidence: 'High',
+    icon: '⚫', hdrClass: 'hdr-nonrecyc'
+  },
+  {
+    keywords: ['styrofoam', 'polystyrene', 'foam cup', 'foam container'],
+    item: 'Styrofoam / polystyrene',
+    category: 'Non-recyclable',
+    disposal: 'Place in general/residual waste bin. Most curbside programmes cannot process EPS foam. Some specialist drop-offs exist.',
+    tip: 'Choose food/beverage containers made of paper or reusable materials to eliminate this waste.',
+    confidence: 'High',
+    icon: '⚫', hdrClass: 'hdr-nonrecyc'
+  },
+  {
+    keywords: ['chip packet', 'crisp packet', 'snack wrapper', 'candy wrapper', 'sweet wrapper', 'plastic bag', 'cling wrap', 'cling film', 'plastic wrap'],
+    item: 'Soft plastic / film packaging',
+    category: 'Non-recyclable',
+    disposal: 'Most kerbside recycling bins cannot accept soft plastics. Check for in-store soft-plastic take-back schemes.',
+    tip: 'Bring reusable bags to reduce soft-plastic accumulation — it persists in ecosystems for centuries.',
+    confidence: 'High',
+    icon: '⚫', hdrClass: 'hdr-nonrecyc'
+  },
+  {
+    keywords: ['diaper', 'nappy', 'sanitary pad', 'tissue', 'used tissue', 'napkin'],
+    item: 'Single-use hygiene product',
+    category: 'Non-recyclable',
+    disposal: 'Wrap and place in a sealed bag in the general/residual waste bin. Never flush.',
+    tip: 'Reusable alternatives (cloth nappies, menstrual cups) can reduce household waste by kilograms per month.',
+    confidence: 'High',
+    icon: '⚫', hdrClass: 'hdr-nonrecyc'
+  },
+
+  // ── HAZARDOUS ──
+  {
+    keywords: ['used battery', 'battery', 'alkaline battery', 'lithium battery', 'dead battery'],
+    item: 'Used battery',
+    category: 'Hazardous',
+    disposal: 'Never put in general waste or recycling. Take to a designated battery drop-off point (many supermarkets/electronics stores accept them). Do not puncture or dismantle.',
+    tip: 'Batteries contain heavy metals that contaminate soil and water. Even one battery dropped in landfill is harmful.',
+    confidence: 'High',
+    icon: '🔴', hdrClass: 'hdr-hazard'
+  },
+  {
+    keywords: ['expired medicine', 'expired medication', 'unused medicine', 'old pills', 'pills', 'medication'],
+    item: 'Expired / unused medicine',
+    category: 'Hazardous',
+    disposal: 'Return to a pharmacy take-back programme. Never flush down the toilet or pour down the drain — pharmaceuticals contaminate waterways.',
+    tip: 'Buy only what you need and complete prescribed courses to minimise medicine waste.',
+    confidence: 'High',
+    icon: '🔴', hdrClass: 'hdr-hazard'
+  },
+  {
+    keywords: ['paint', 'paint can', 'old paint', 'spray paint', 'solvent', 'varnish', 'thinner'],
+    item: 'Paint / solvent',
+    category: 'Hazardous',
+    disposal: 'Take to a household hazardous waste (HHW) facility or community collection event. Never pour down drains or into soil.',
+    tip: 'Buy only the amount of paint you need, or donate leftovers to community projects.',
+    confidence: 'High',
+    icon: '🔴', hdrClass: 'hdr-hazard'
+  },
+  {
+    keywords: ['bleach', 'cleaning chemical', 'pesticide', 'insecticide', 'weedkiller', 'herbicide', 'fertilizer', 'fertiliser'],
+    item: 'Household chemical / pesticide',
+    category: 'Hazardous',
+    disposal: 'Do not pour down drains. Take to a hazardous waste drop-off facility. Store in original labelled container until disposal.',
+    tip: 'Consider natural pest-control alternatives to reduce chemical waste at source.',
+    confidence: 'High',
+    icon: '🔴', hdrClass: 'hdr-hazard'
+  },
+
+  // ── E-WASTE ──
+  {
+    keywords: ['old smartphone', 'broken phone', 'phone', 'mobile phone', 'smartphone', 'old mobile'],
+    item: 'Mobile phone / smartphone',
+    category: 'E-waste',
+    disposal: 'Take to an authorised e-waste collection centre or manufacturer take-back scheme. Wipe personal data first. Do not place in any household bin.',
+    tip: 'Smartphones contain recoverable metals. Responsible e-waste recycling reduces demand for newly mined materials.',
+    confidence: 'High',
+    icon: '🟣', hdrClass: 'hdr-ewaste'
+  },
+  {
+    keywords: ['laptop', 'computer', 'desktop', 'monitor', 'screen', 'keyboard', 'mouse', 'tablet'],
+    item: 'Computer / laptop / peripherals',
+    category: 'E-waste',
+    disposal: 'Do not bin. Take to a certified e-waste recycler or manufacturer take-back programme. Delete all personal data before disposal.',
+    tip: 'Donating a working device extends its life by years and reduces demand for newly mined materials.',
+    confidence: 'High',
+    icon: '🟣', hdrClass: 'hdr-ewaste'
+  },
+  {
+    keywords: ['charger', 'cable', 'usb cable', 'power adapter', 'earphone', 'headphone', 'earbuds'],
+    item: 'Electronic accessory (charger / cable / earphones)',
+    category: 'E-waste',
+    disposal: 'Place in an e-waste collection bin at an electronics retailer or drop-off point. Never put in general or recycling bins.',
+    tip: 'Buy universal/multi-use chargers to reduce cable waste, and keep spare cables out of drawers unused.',
+    confidence: 'High',
+    icon: '🟣', hdrClass: 'hdr-ewaste'
+  },
+  {
+    keywords: ['television', 'tv', 'fridge', 'refrigerator', 'microwave', 'washing machine', 'dishwasher', 'air conditioner', 'appliance', 'toaster', 'iron'],
+    item: 'Large household appliance',
+    category: 'E-waste',
+    disposal: 'Contact your local municipality for bulky e-waste collection or take to an authorised e-waste facility. Retailers often offer take-back when delivering a replacement.',
+    tip: 'Repair before replacing — many appliances can be fixed for a fraction of the cost of new.',
+    confidence: 'High',
+    icon: '🟣', hdrClass: 'hdr-ewaste'
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLASSIFIER
+// ─────────────────────────────────────────────────────────────────────────────
+function classify(input) {
+  const q = input.trim().toLowerCase();
+  if (!q) return null;
+
+  // Score each KB entry
+  let best = null, bestScore = 0;
+  for (const entry of KB) {
+    let score = 0;
+    for (const kw of entry.keywords) {
+      if (q === kw) { score += 10; break; }
+      if (q.includes(kw)) { score += kw.split(' ').length * 2; }
+      if (kw.includes(q) && q.length >= 4) { score += 1; }
+    }
+    if (score > bestScore) { bestScore = score; best = entry; }
+  }
+
+  // Require a minimum relevance score
+  if (bestScore < 1) return null;
+
+  // Downgrade confidence if score is marginal
+  const result = Object.assign({}, best);
+  if (bestScore === 1) result.confidence = 'Low';
+  else if (bestScore <= 3 && result.confidence === 'High') result.confidence = 'Medium';
+
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+const chatWindow = document.getElementById('chatWindow');
+const userInput  = document.getElementById('userInput');
+const sendBtn    = document.getElementById('sendBtn');
+
+// image state
+let pendingImageName = null;
+
+function toggleRai() {
+  const body = document.getElementById('raiBody');
+  const btn  = document.getElementById('raiToggleBtn');
+  const open = body.classList.toggle('open');
+  btn.textContent = open ? 'Hide details' : 'Show details';
+}
+
+function handleImageUpload(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  pendingImageName = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('imgPreview').src = e.target.result;
+    document.getElementById('imgPreviewInfo').textContent =
+      `"${file.name}" — only the filename will be used as a classification hint. Visual content is not analysed.`;
+    document.getElementById('imgPreviewWrap').classList.add('visible');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage() {
+  pendingImageName = null;
+  document.getElementById('imgInput').value = '';
+  document.getElementById('imgPreview').src = '';
+  document.getElementById('imgPreviewWrap').classList.remove('visible');
+}
+
+function scrollToBottom() {
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function appendMessage(role, content) {
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = `avatar avatar-${role}`;
+  avatar.textContent = role === 'ai' ? 'AI' : 'You';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  if (typeof content === 'string') {
+    bubble.textContent = content;
+  } else {
+    bubble.appendChild(content);
+  }
+
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+  chatWindow.appendChild(wrap);
+  scrollToBottom();
+  return bubble;
+}
+
+function showTyping() {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ai';
+  wrap.id = 'typingIndicator';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar avatar-ai';
+  avatar.textContent = 'AI';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+  chatWindow.appendChild(wrap);
+  scrollToBottom();
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingIndicator');
+  if (t) t.remove();
+}
+
+function buildResultCard(result, rawInput, fromImage) {
+  const card = document.createElement('div');
+  card.className = 'result-card';
+
+  const hdr = document.createElement('div');
+  hdr.className = `result-header ${result.hdrClass}`;
+  hdr.innerHTML = `${result.icon} ${result.item}`;
+  card.appendChild(hdr);
+
+  const body = document.createElement('div');
+  body.className = 'result-body';
+
+  const rows = [
+    { label: 'Item',     value: result.item },
+    { label: 'Category', value: result.category },
+    { label: 'Disposal', value: result.disposal },
+    { label: 'Tip',      value: '💡 ' + result.tip },
+    { label: 'Confidence', value: null, conf: result.confidence },
+  ];
+
+  rows.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'result-row';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'result-label';
+    lbl.textContent = r.label;
+
+    const val = document.createElement('span');
+    val.className = 'result-value';
+
+    if (r.conf) {
+      const badge = document.createElement('span');
+      badge.className = `conf-badge conf-${r.conf.toLowerCase()}`;
+      badge.textContent = r.conf;
+      val.appendChild(badge);
+      if (r.conf === 'Medium') {
+        const note = document.createElement('span');
+        note.style.cssText = 'font-size:0.75rem;color:#888;display:block;margin-top:3px;';
+        note.textContent = 'Classification is approximate. Verify with local guidelines.';
+        val.appendChild(note);
+      }
+      if (r.conf === 'Low') {
+        const note = document.createElement('span');
+        note.style.cssText = 'font-size:0.75rem;color:#bf360c;display:block;margin-top:3px;';
+        note.textContent = 'Limited match found. Please provide more detail for a precise result.';
+        val.appendChild(note);
+      }
+    } else {
+      val.textContent = r.value;
+    }
+
+    row.appendChild(lbl);
+    row.appendChild(val);
+    body.appendChild(row);
+  });
+
+  card.appendChild(body);
+
+  // Wrap in a container with intro text
+  const container = document.createElement('div');
+  const intro = document.createElement('div');
+  intro.style.cssText = 'font-size:0.85rem;margin-bottom:6px;';
+  intro.textContent = `Here's my analysis for "${rawInput}":`;
+  container.appendChild(intro);
+  container.appendChild(card);
+
+  // Image source notice
+  if (fromImage) {
+    const imgNote = document.createElement('div');
+    imgNote.className = 'img-result-note';
+    imgNote.innerHTML = `<span>📷</span><span><strong>Image input:</strong> Classification was based on the image filename as a text hint only — visual content was not analysed. This result may not reflect what is actually shown in the image. Treat as an estimate only.</span>`;
+    container.appendChild(imgNote);
+  }
+
+  // Uncertainty banner for Medium/Low results
+  if (result.confidence !== 'High') {
+    const banner = document.createElement('div');
+    banner.className = 'uncertainty-banner';
+    banner.innerHTML = result.confidence === 'Low'
+      ? `<strong>Low confidence:</strong> This classification is based on a weak keyword match. The result may be inaccurate — please provide a clearer description for a reliable answer.`
+      : `<strong>Medium confidence:</strong> The classification is a reasonable estimate but may not be fully accurate. Verify with your local waste guidelines before disposing.`;
+    container.appendChild(banner);
+  }
+
+  return container;
+}
+
+function buildClarificationMsg(rawInput) {
+  const el = document.createElement('div');
+  el.style.cssText = 'font-size:0.87rem;line-height:1.6;';
+  el.innerHTML = `
+    I wasn't able to confidently identify <strong>"${rawInput}"</strong> from that description. 
+    To give you an accurate classification, could you tell me:<br><br>
+    <ul style="padding-left:18px;margin:0;display:flex;flex-direction:column;gap:4px;">
+      <li>What material is it made of? (e.g. plastic, metal, glass, fabric)</li>
+      <li>What was it used for?</li>
+      <li>Is it contaminated with food or chemicals?</li>
+    </ul><br>
+    <span style="color:#5d4037;font-size:0.8rem;">
+      <strong>Responsible AI:</strong> I'd rather ask than guess — an incorrect classification could lead to improper disposal.
+    </span>
+  `;
+  return el;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE LOGIC
+// ─────────────────────────────────────────────────────────────────────────────
+function processInput(raw, fromImage) {
+  const text = raw.trim();
+  if (!text) return;
+
+  // Build user bubble — include image label if image was attached
+  const userLabel = fromImage
+    ? `📷 [Image: ${document.getElementById('imgInput').files[0]?.name || 'image'}]\n${text}`
+    : text;
+  appendMessage('user', userLabel);
+  sendBtn.disabled = true;
+  showTyping();
+
+  setTimeout(() => {
+    removeTyping();
+    let result = classify(text);
+
+    if (result) {
+      // Cap image-based results at Medium confidence
+      if (fromImage) {
+        result = Object.assign({}, result);
+        if (result.confidence === 'High') result.confidence = 'Medium';
+      }
+      const card = buildResultCard(result, text, fromImage);
+      appendMessage('ai', card);
+    } else {
+      const clarify = buildClarificationMsg(text);
+      appendMessage('ai', clarify);
+    }
+
+    // Clear image state after send
+    if (fromImage) clearImage();
+
+    sendBtn.disabled = false;
+    userInput.focus();
+  }, 900 + Math.random() * 400);
+}
+
+function handleSend() {
+  const text    = userInput.value.trim();
+  const hasImg  = !!pendingImageName;
+  // Allow send if there is text, or if there is an image (use filename as query)
+  const query   = text || pendingImageName;
+  if (!query) return;
+  userInput.value = '';
+  autoResize(userInput);
+  processInput(query, hasImg);
+}
+
+function sendSample(text) {
+  userInput.value = '';
+  processInput(text);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleSend();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT — welcome message
+// ─────────────────────────────────────────────────────────────────────────────
+(function init() {
+  const welcome = document.createElement('div');
+  welcome.style.cssText = 'font-size:0.87rem;line-height:1.65;';
+  welcome.innerHTML = `
+    <strong>Hello! 👋 I'm your AI Waste Segregation Assistant.</strong><br><br>
+    Tell me about any waste item — its name, description, or what it's made of — and I'll help you:
+    <ul style="padding-left:18px;margin:6px 0 8px;display:flex;flex-direction:column;gap:3px;">
+      <li>Identify and classify the waste</li>
+      <li>Recommend the correct disposal method</li>
+      <li>Share a sustainability tip</li>
+    </ul>
+    If I'm unsure, I'll ask for more detail rather than guess.
+    <br><br>
+    <span style="color:#5a6b5c;font-size:0.8rem;">Try typing a waste item below, or use a sample button to get started.</span>
+  `;
+  appendMessage('ai', welcome);
+})();
+</script>
+</body>
+</html>
